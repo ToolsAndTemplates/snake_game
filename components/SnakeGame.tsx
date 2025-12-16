@@ -217,16 +217,6 @@ export default function SnakeGame() {
     setTouchStart(null);
   };
 
-  const handleDirectionClick = (dir: Direction) => {
-    if (gameState === 'idle') {
-      startGame();
-      setNextDirection(dir);
-    } else if (gameState === 'playing') {
-      const opposites: Record<Direction, Direction> = { UP: 'DOWN', DOWN: 'UP', LEFT: 'RIGHT', RIGHT: 'LEFT' };
-      if (opposites[direction] !== dir) setNextDirection(dir);
-    }
-  };
-
   return (
     <div className="w-full max-w-3xl mx-auto">
       {/* Header */}
@@ -313,55 +303,6 @@ export default function SnakeGame() {
           )}
         </div>
       </div>
-
-      {/* Mobile Controls */}
-      <div className="mt-6 md:hidden flex flex-col items-center gap-2">
-        <button
-          onClick={() => handleDirectionClick('UP')}
-          className="w-12 h-12 rounded-lg transition-all active:scale-95"
-          style={{ backgroundColor: '#5c9b8a', color: '#f5efd4' }}
-        >
-          <svg className="w-5 h-5 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 15l7-7 7 7" />
-          </svg>
-        </button>
-        <div className="flex gap-2">
-          <button
-            onClick={() => handleDirectionClick('LEFT')}
-            className="w-12 h-12 rounded-lg transition-all active:scale-95"
-            style={{ backgroundColor: '#5c9b8a', color: '#f5efd4' }}
-          >
-            <svg className="w-5 h-5 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M15 19l-7-7 7-7" />
-            </svg>
-          </button>
-          <button
-            onClick={() => handleDirectionClick('DOWN')}
-            className="w-12 h-12 rounded-lg transition-all active:scale-95"
-            style={{ backgroundColor: '#5c9b8a', color: '#f5efd4' }}
-          >
-            <svg className="w-5 h-5 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 9l-7 7-7-7" />
-            </svg>
-          </button>
-          <button
-            onClick={() => handleDirectionClick('RIGHT')}
-            className="w-12 h-12 rounded-lg transition-all active:scale-95"
-            style={{ backgroundColor: '#5c9b8a', color: '#f5efd4' }}
-          >
-            <svg className="w-5 h-5 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5l7 7-7 7" />
-            </svg>
-          </button>
-        </div>
-      </div>
-
-      {/* Instructions */}
-      {gameState === 'playing' && (
-        <p className="text-center text-sm mt-6" style={{ color: '#8b7355' }}>
-          Press <span style={{ color: '#3d3228' }}>Space</span> to pause
-        </p>
-      )}
     </div>
   );
 }
