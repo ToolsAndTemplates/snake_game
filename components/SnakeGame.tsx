@@ -14,14 +14,14 @@ type GameState = 'idle' | 'playing' | 'paused' | 'gameOver';
 
 // Constants
 const GRID_SIZE = 20;
-const CELL_SIZE = 20;
+const CELL_SIZE = 24;
 const INITIAL_SNAKE: Position[] = [
   { x: 10, y: 10 },
   { x: 10, y: 11 },
   { x: 10, y: 12 },
 ];
 const INITIAL_DIRECTION: Direction = 'UP';
-const GAME_SPEED = 150; // milliseconds
+const GAME_SPEED = 120;
 
 export default function SnakeGame() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -34,7 +34,6 @@ export default function SnakeGame() {
   const [highScore, setHighScore] = useState(0);
   const gameLoopRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Load high score from localStorage on mount
   useEffect(() => {
     const savedHighScore = localStorage.getItem('snakeHighScore');
     if (savedHighScore) {
@@ -42,7 +41,6 @@ export default function SnakeGame() {
     }
   }, []);
 
-  // Generate random food position
   const generateFood = useCallback((currentSnake: Position[]): Position => {
     let newFood: Position;
     do {
@@ -56,17 +54,13 @@ export default function SnakeGame() {
     return newFood;
   }, []);
 
-  // Check collision with walls or self
   const checkCollision = useCallback((head: Position, snakeBody: Position[]): boolean => {
-    // Wall collision
     if (head.x < 0 || head.x >= GRID_SIZE || head.y < 0 || head.y >= GRID_SIZE) {
       return true;
     }
-    // Self collision
     return snakeBody.some((segment) => segment.x === head.x && segment.y === head.y);
   }, []);
 
-  // Game loop
   useEffect(() => {
     if (gameState !== 'playing') return;
 
@@ -74,7 +68,6 @@ export default function SnakeGame() {
       setSnake((prevSnake) => {
         const head = { ...prevSnake[0] };
 
-        // Move head in the current direction
         switch (nextDirection) {
           case 'UP':
             head.y -= 1;
@@ -90,10 +83,8 @@ export default function SnakeGame() {
             break;
         }
 
-        // Update direction after movement
         setDirection(nextDirection);
 
-        // Check collision
         if (checkCollision(head, prevSnake)) {
           setGameState('gameOver');
           return prevSnake;
@@ -101,7 +92,6 @@ export default function SnakeGame() {
 
         const newSnake = [head, ...prevSnake];
 
-        // Check if food is eaten
         if (head.x === food.x && head.y === food.y) {
           setScore((prev) => {
             const newScore = prev + 10;
@@ -127,7 +117,6 @@ export default function SnakeGame() {
     };
   }, [gameState, nextDirection, food, checkCollision, generateFood, highScore]);
 
-  // Handle keyboard input
   useEffect(() => {
     const handleKeyPress = (e: KeyboardEvent) => {
       if (gameState === 'idle') {
@@ -175,7 +164,6 @@ export default function SnakeGame() {
 
       if (newDirection) {
         e.preventDefault();
-        // Prevent 180-degree turns
         const opposites: Record<Direction, Direction> = {
           UP: 'DOWN',
           DOWN: 'UP',
@@ -192,7 +180,6 @@ export default function SnakeGame() {
     return () => window.removeEventListener('keydown', handleKeyPress);
   }, [gameState, direction]);
 
-  // Draw game on canvas
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -200,13 +187,13 @@ export default function SnakeGame() {
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    // Clear canvas
-    ctx.fillStyle = '#1a1a2e';
+    // Clear with dark background
+    ctx.fillStyle = '#0a0a15';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    // Draw grid
-    ctx.strokeStyle = '#16213e20';
-    ctx.lineWidth = 0.5;
+    // Draw subtle grid
+    ctx.strokeStyle = 'rgba(59, 130, 246, 0.05)';
+    ctx.lineWidth = 1;
     for (let i = 0; i <= GRID_SIZE; i++) {
       ctx.beginPath();
       ctx.moveTo(i * CELL_SIZE, 0);
@@ -218,49 +205,65 @@ export default function SnakeGame() {
       ctx.stroke();
     }
 
-    // Draw food with glow effect
-    ctx.shadowBlur = 15;
-    ctx.shadowColor = '#ff6b6b';
-    ctx.fillStyle = '#ff6b6b';
+    // Draw food with glow
+    const foodX = food.x * CELL_SIZE + CELL_SIZE / 2;
+    const foodY = food.y * CELL_SIZE + CELL_SIZE / 2;
+
+    ctx.shadowBlur = 25;
+    ctx.shadowColor = '#22c55e';
+
+    // Outer glow
+    const foodGradient = ctx.createRadialGradient(foodX, foodY, 0, foodX, foodY, CELL_SIZE / 2);
+    foodGradient.addColorStop(0, '#22c55e');
+    foodGradient.addColorStop(0.7, '#16a34a');
+    foodGradient.addColorStop(1, 'rgba(34, 197, 94, 0.3)');
+
+    ctx.fillStyle = foodGradient;
     ctx.beginPath();
-    ctx.arc(
-      food.x * CELL_SIZE + CELL_SIZE / 2,
-      food.y * CELL_SIZE + CELL_SIZE / 2,
-      CELL_SIZE / 2 - 2,
-      0,
-      2 * Math.PI
-    );
+    ctx.arc(foodX, foodY, CELL_SIZE / 2 - 2, 0, 2 * Math.PI);
     ctx.fill();
+
     ctx.shadowBlur = 0;
 
-    // Draw snake
+    // Draw snake with modern style
     snake.forEach((segment, index) => {
       const isHead = index === 0;
-      const gradient = ctx.createLinearGradient(
-        segment.x * CELL_SIZE,
-        segment.y * CELL_SIZE,
-        (segment.x + 1) * CELL_SIZE,
-        (segment.y + 1) * CELL_SIZE
-      );
+      const x = segment.x * CELL_SIZE;
+      const y = segment.y * CELL_SIZE;
 
       if (isHead) {
-        gradient.addColorStop(0, '#4ecdc4');
-        gradient.addColorStop(1, '#44a08d');
-        ctx.shadowBlur = 10;
-        ctx.shadowColor = '#4ecdc4';
+        // Head with strong glow
+        ctx.shadowBlur = 20;
+        ctx.shadowColor = '#3b82f6';
+
+        const headGradient = ctx.createRadialGradient(
+          x + CELL_SIZE / 2,
+          y + CELL_SIZE / 2,
+          0,
+          x + CELL_SIZE / 2,
+          y + CELL_SIZE / 2,
+          CELL_SIZE / 2
+        );
+        headGradient.addColorStop(0, '#60a5fa');
+        headGradient.addColorStop(0.7, '#3b82f6');
+        headGradient.addColorStop(1, '#2563eb');
+
+        ctx.fillStyle = headGradient;
+        ctx.fillRect(x + 2, y + 2, CELL_SIZE - 4, CELL_SIZE - 4);
       } else {
-        const alpha = 1 - (index / snake.length) * 0.5;
-        gradient.addColorStop(0, `rgba(78, 205, 196, ${alpha})`);
-        gradient.addColorStop(1, `rgba(68, 160, 141, ${alpha})`);
+        // Body with gradient fade
+        const alpha = 1 - (index / snake.length) * 0.6;
+        ctx.shadowBlur = 10;
+        ctx.shadowColor = `rgba(59, 130, 246, ${alpha * 0.5})`;
+
+        const bodyGradient = ctx.createLinearGradient(x, y, x + CELL_SIZE, y + CELL_SIZE);
+        bodyGradient.addColorStop(0, `rgba(96, 165, 250, ${alpha})`);
+        bodyGradient.addColorStop(1, `rgba(59, 130, 246, ${alpha * 0.8})`);
+
+        ctx.fillStyle = bodyGradient;
+        ctx.fillRect(x + 2, y + 2, CELL_SIZE - 4, CELL_SIZE - 4);
       }
 
-      ctx.fillStyle = gradient;
-      ctx.fillRect(
-        segment.x * CELL_SIZE + 1,
-        segment.y * CELL_SIZE + 1,
-        CELL_SIZE - 2,
-        CELL_SIZE - 2
-      );
       ctx.shadowBlur = 0;
     });
   }, [snake, food]);
@@ -282,7 +285,6 @@ export default function SnakeGame() {
     setGameState('idle');
   };
 
-  // Touch controls
   const [touchStart, setTouchStart] = useState<Position | null>(null);
 
   const handleTouchStart = (e: React.TouchEvent) => {
@@ -300,7 +302,6 @@ export default function SnakeGame() {
     const minSwipeDistance = 30;
 
     if (Math.abs(deltaX) < minSwipeDistance && Math.abs(deltaY) < minSwipeDistance) {
-      // Tap - start or pause
       if (gameState === 'idle') {
         startGame();
       } else if (gameState === 'playing' || gameState === 'paused') {
@@ -315,10 +316,8 @@ export default function SnakeGame() {
     let newDirection: Direction | null = null;
 
     if (Math.abs(deltaX) > Math.abs(deltaY)) {
-      // Horizontal swipe
       newDirection = deltaX > 0 ? 'RIGHT' : 'LEFT';
     } else {
-      // Vertical swipe
       newDirection = deltaY > 0 ? 'DOWN' : 'UP';
     }
 
@@ -337,7 +336,6 @@ export default function SnakeGame() {
     setTouchStart(null);
   };
 
-  // Mobile control buttons
   const handleDirectionClick = (newDirection: Direction) => {
     if (gameState === 'idle') {
       startGame();
@@ -359,130 +357,169 @@ export default function SnakeGame() {
   };
 
   return (
-    <div className="flex flex-col items-center justify-center p-4 w-full max-w-2xl">
-      {/* Header */}
-      <div className="w-full mb-6">
-        <h1 className="text-4xl md:text-5xl font-bold text-center mb-4 bg-gradient-to-r from-cyan-400 to-emerald-400 bg-clip-text text-transparent">
-          Snake Game
+    <div className="flex flex-col items-center justify-center p-4 sm:p-6 w-full max-w-3xl">
+      {/* Header with title */}
+      <div className="w-full mb-8">
+        <h1 className="text-5xl sm:text-6xl md:text-7xl font-extrabold text-center mb-8 tracking-tight">
+          <span className="bg-gradient-to-r from-blue-400 via-blue-500 to-green-400 bg-clip-text text-transparent drop-shadow-2xl">
+            SNAKE
+          </span>
         </h1>
 
-        {/* Score Display */}
-        <div className="flex justify-between items-center bg-slate-800/50 backdrop-blur-sm rounded-lg p-4 mb-4">
-          <div className="text-center">
-            <div className="text-sm text-gray-400 mb-1">Score</div>
-            <div className="text-3xl font-bold text-cyan-400">{score}</div>
-          </div>
-          <div className="text-center">
-            <div className="text-sm text-gray-400 mb-1">High Score</div>
-            <div className="text-3xl font-bold text-emerald-400">{highScore}</div>
+        {/* Score Display - Glass morphism */}
+        <div className="glass rounded-2xl p-6 shadow-2xl relative overflow-hidden">
+          <div className="absolute inset-0 bg-gradient-to-br from-blue-500/10 to-green-500/10" />
+          <div className="relative flex justify-around items-center gap-8">
+            <div className="text-center flex-1">
+              <div className="text-xs sm:text-sm font-medium text-gray-400 uppercase tracking-wider mb-2">
+                Score
+              </div>
+              <div className="text-4xl sm:text-5xl font-bold bg-gradient-to-r from-blue-400 to-blue-500 bg-clip-text text-transparent">
+                {score}
+              </div>
+            </div>
+            <div className="w-px h-16 bg-gradient-to-b from-transparent via-white/20 to-transparent" />
+            <div className="text-center flex-1">
+              <div className="text-xs sm:text-sm font-medium text-gray-400 uppercase tracking-wider mb-2">
+                Best
+              </div>
+              <div className="text-4xl sm:text-5xl font-bold bg-gradient-to-r from-green-400 to-green-500 bg-clip-text text-transparent">
+                {highScore}
+              </div>
+            </div>
           </div>
         </div>
       </div>
 
-      {/* Game Canvas */}
-      <div className="relative">
-        <canvas
-          ref={canvasRef}
-          width={GRID_SIZE * CELL_SIZE}
-          height={GRID_SIZE * CELL_SIZE}
-          className="border-4 border-cyan-500/50 rounded-lg shadow-2xl shadow-cyan-500/20"
-          onTouchStart={handleTouchStart}
-          onTouchEnd={handleTouchEnd}
-        />
+      {/* Game Canvas with glass effect */}
+      <div className="relative mb-8">
+        <div className="glass rounded-3xl p-4 sm:p-6 shadow-2xl glow-blue">
+          <canvas
+            ref={canvasRef}
+            width={GRID_SIZE * CELL_SIZE}
+            height={GRID_SIZE * CELL_SIZE}
+            className="rounded-2xl shadow-inner"
+            style={{ display: 'block' }}
+            onTouchStart={handleTouchStart}
+            onTouchEnd={handleTouchEnd}
+          />
 
-        {/* Overlay Messages */}
-        {gameState === 'idle' && (
-          <div className="absolute inset-0 flex items-center justify-center bg-black/70 backdrop-blur-sm rounded-lg">
-            <div className="text-center p-6">
-              <h2 className="text-3xl font-bold text-white mb-4">Ready to Play?</h2>
-              <p className="text-gray-300 mb-2">Desktop: Use Arrow Keys or WASD</p>
-              <p className="text-gray-300 mb-4">Mobile: Swipe to move</p>
-              <button
-                onClick={startGame}
-                className="bg-gradient-to-r from-cyan-500 to-emerald-500 text-white px-8 py-3 rounded-lg font-bold text-lg hover:from-cyan-600 hover:to-emerald-600 transition-all transform hover:scale-105"
-              >
-                Start Game
-              </button>
+          {/* Game State Overlays */}
+          {gameState === 'idle' && (
+            <div className="absolute inset-4 sm:inset-6 flex items-center justify-center bg-black/80 backdrop-blur-xl rounded-2xl border border-white/10">
+              <div className="text-center p-6 sm:p-8 max-w-sm">
+                <div className="mb-6">
+                  <div className="text-6xl mb-4">🐍</div>
+                  <h2 className="text-3xl sm:text-4xl font-bold text-white mb-3">Ready?</h2>
+                  <p className="text-gray-300 text-sm sm:text-base mb-2">
+                    Use <kbd className="px-2 py-1 bg-white/10 rounded text-xs">↑ ↓ ← →</kbd> or <kbd className="px-2 py-1 bg-white/10 rounded text-xs">WASD</kbd>
+                  </p>
+                  <p className="text-gray-400 text-xs sm:text-sm">
+                    Mobile: Swipe to move
+                  </p>
+                </div>
+                <button
+                  onClick={startGame}
+                  className="group relative px-8 py-4 bg-gradient-to-r from-blue-500 to-green-500 rounded-xl font-bold text-lg text-white shadow-lg hover:shadow-blue-500/50 transition-all duration-300 hover:scale-105 active:scale-95"
+                >
+                  <span className="relative z-10">Start Game</span>
+                  <div className="absolute inset-0 rounded-xl bg-gradient-to-r from-blue-600 to-green-600 opacity-0 group-hover:opacity-100 transition-opacity" />
+                </button>
+              </div>
             </div>
-          </div>
-        )}
+          )}
 
-        {gameState === 'paused' && (
-          <div className="absolute inset-0 flex items-center justify-center bg-black/70 backdrop-blur-sm rounded-lg">
-            <div className="text-center">
-              <h2 className="text-4xl font-bold text-white mb-4">Paused</h2>
-              <p className="text-gray-300">Press Space or Tap to Continue</p>
+          {gameState === 'paused' && (
+            <div className="absolute inset-4 sm:inset-6 flex items-center justify-center bg-black/80 backdrop-blur-xl rounded-2xl border border-white/10">
+              <div className="text-center">
+                <div className="text-5xl mb-4">⏸️</div>
+                <h2 className="text-4xl sm:text-5xl font-bold text-white mb-3">Paused</h2>
+                <p className="text-gray-300 text-sm sm:text-base">
+                  Press <kbd className="px-2 py-1 bg-white/10 rounded text-xs">Space</kbd> or tap to continue
+                </p>
+              </div>
             </div>
-          </div>
-        )}
+          )}
 
-        {gameState === 'gameOver' && (
-          <div className="absolute inset-0 flex items-center justify-center bg-black/70 backdrop-blur-sm rounded-lg">
-            <div className="text-center p-6">
-              <h2 className="text-4xl font-bold text-red-400 mb-4">Game Over!</h2>
-              <p className="text-2xl text-white mb-2">Final Score: {score}</p>
-              {score === highScore && score > 0 && (
-                <p className="text-xl text-yellow-400 mb-4">New High Score!</p>
-              )}
-              <button
-                onClick={resetGame}
-                className="bg-gradient-to-r from-cyan-500 to-emerald-500 text-white px-8 py-3 rounded-lg font-bold text-lg hover:from-cyan-600 hover:to-emerald-600 transition-all transform hover:scale-105"
-              >
-                Play Again
-              </button>
+          {gameState === 'gameOver' && (
+            <div className="absolute inset-4 sm:inset-6 flex items-center justify-center bg-black/80 backdrop-blur-xl rounded-2xl border border-red-500/30">
+              <div className="text-center p-6 sm:p-8">
+                <div className="text-6xl mb-4">💀</div>
+                <h2 className="text-4xl sm:text-5xl font-bold text-red-400 mb-4">Game Over</h2>
+                <div className="mb-6">
+                  <p className="text-gray-300 text-xl sm:text-2xl mb-2">
+                    Score: <span className="font-bold text-white">{score}</span>
+                  </p>
+                  {score === highScore && score > 0 && (
+                    <p className="text-yellow-400 text-lg font-semibold animate-pulse">
+                      🏆 New Record!
+                    </p>
+                  )}
+                </div>
+                <button
+                  onClick={resetGame}
+                  className="group relative px-8 py-4 bg-gradient-to-r from-blue-500 to-green-500 rounded-xl font-bold text-lg text-white shadow-lg hover:shadow-blue-500/50 transition-all duration-300 hover:scale-105 active:scale-95"
+                >
+                  <span className="relative z-10">Play Again</span>
+                  <div className="absolute inset-0 rounded-xl bg-gradient-to-r from-blue-600 to-green-600 opacity-0 group-hover:opacity-100 transition-opacity" />
+                </button>
+              </div>
             </div>
-          </div>
-        )}
+          )}
+        </div>
       </div>
 
       {/* Mobile Controls */}
-      <div className="mt-6 md:hidden">
-        <div className="flex flex-col items-center gap-2">
-          <button
-            onClick={() => handleDirectionClick('UP')}
-            className="bg-slate-700/50 backdrop-blur-sm text-white p-4 rounded-lg hover:bg-slate-600/50 active:bg-slate-500/50 transition-all"
-          >
-            <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
-            </svg>
-          </button>
-          <div className="flex gap-2">
+      <div className="sm:hidden mb-6">
+        <div className="glass rounded-2xl p-4">
+          <div className="flex flex-col items-center gap-3">
             <button
-              onClick={() => handleDirectionClick('LEFT')}
-              className="bg-slate-700/50 backdrop-blur-sm text-white p-4 rounded-lg hover:bg-slate-600/50 active:bg-slate-500/50 transition-all"
+              onClick={() => handleDirectionClick('UP')}
+              className="glass p-4 rounded-xl hover:bg-white/10 active:bg-white/20 transition-all active:scale-95"
             >
-              <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+              <svg className="w-8 h-8 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 15l7-7 7 7" />
               </svg>
             </button>
-            <button
-              onClick={() => handleDirectionClick('DOWN')}
-              className="bg-slate-700/50 backdrop-blur-sm text-white p-4 rounded-lg hover:bg-slate-600/50 active:bg-slate-500/50 transition-all"
-            >
-              <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-              </svg>
-            </button>
-            <button
-              onClick={() => handleDirectionClick('RIGHT')}
-              className="bg-slate-700/50 backdrop-blur-sm text-white p-4 rounded-lg hover:bg-slate-600/50 active:bg-slate-500/50 transition-all"
-            >
-              <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-              </svg>
-            </button>
+            <div className="flex gap-3">
+              <button
+                onClick={() => handleDirectionClick('LEFT')}
+                className="glass p-4 rounded-xl hover:bg-white/10 active:bg-white/20 transition-all active:scale-95"
+              >
+                <svg className="w-8 h-8 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M15 19l-7-7 7-7" />
+                </svg>
+              </button>
+              <button
+                onClick={() => handleDirectionClick('DOWN')}
+                className="glass p-4 rounded-xl hover:bg-white/10 active:bg-white/20 transition-all active:scale-95"
+              >
+                <svg className="w-8 h-8 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M19 9l-7 7-7-7" />
+                </svg>
+              </button>
+              <button
+                onClick={() => handleDirectionClick('RIGHT')}
+                className="glass p-4 rounded-xl hover:bg-white/10 active:bg-white/20 transition-all active:scale-95"
+              >
+                <svg className="w-8 h-8 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M9 5l7 7-7 7" />
+                </svg>
+              </button>
+            </div>
           </div>
         </div>
       </div>
 
       {/* Instructions */}
-      <div className="mt-6 text-center text-gray-400 text-sm">
-        <p className="mb-1">
-          <span className="hidden md:inline">Press Space to pause • </span>
-          <span className="md:hidden">Tap screen to pause • </span>
-          Eat food to grow and score points
+      <div className="text-center text-gray-400 text-sm max-w-md">
+        <p className="mb-2">
+          Eat the <span className="text-green-400 font-semibold">green orbs</span> to grow •
+          Avoid hitting <span className="text-red-400 font-semibold">walls</span> and <span className="text-blue-400 font-semibold">yourself</span>
         </p>
-        <p>Don&apos;t hit the walls or yourself!</p>
+        <p className="text-xs text-gray-500">
+          Press <kbd className="px-1.5 py-0.5 bg-white/5 rounded text-xs">Space</kbd> to pause
+        </p>
       </div>
     </div>
   );
